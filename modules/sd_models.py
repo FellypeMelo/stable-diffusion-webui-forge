@@ -522,6 +522,25 @@ def forge_model_reload():
     sd_model = forge_loader(state_dict, additional_state_dicts=additional_state_dicts)
     timer.record("forge model load")
 
+    # ─────────────────────────────────────────────────────────────
+    # Arc-Forge v1.3: Safe Speed Optimization (Channels Last)
+    # Rationale: Arc favors NHWC memory layout for vectorization
+    # ─────────────────────────────────────────────────────────────
+    try:
+        from backend.xpu.device import is_arc_gpu
+        from backend.xpu.config import get_optimal_memory_format
+        
+        if is_arc_gpu():
+            optimal_format = get_optimal_memory_format()
+            
+            # Apply to UNet (Main compute bottleneck)
+            if hasattr(sd_model, 'forge_objects') and hasattr(sd_model.forge_objects, 'unet'):
+                print(f"[Arc-Forge] Optimized Logic: Applying {optimal_format} to UNet (Channels Last)")
+                # This prepares the layout in memory for faster XPU access
+                sd_model.forge_objects.unet = sd_model.forge_objects.unet.to(memory_format=optimal_format)
+    except Exception as e:
+        print(f"[Arc-Forge] Warning: Channels Last optimization failed: {e}")
+
     sd_model.extra_generation_params = {}
     sd_model.comments = []
     sd_model.sd_checkpoint_info = checkpoint_info

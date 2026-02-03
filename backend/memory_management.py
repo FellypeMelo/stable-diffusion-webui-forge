@@ -590,6 +590,43 @@ def unload_model_clones(model):
 
 
 def free_memory(memory_required, device, keep_loaded=[], free_all=False):
+    """
+    Free GPU memory by unloading models.
+    
+    Arc-Forge Optimization: Early-exit if sufficient memory available.
+    """
+    # ─────────────────────────────────────────────────────────────
+    # Arc-Forge: Early-exit optimization
+    # Skip unload if we already have enough free memory
+    # ─────────────────────────────────────────────────────────────
+    if not free_all:
+        try:
+            current_free = get_free_memory(device)
+            # Add headroom to prevent tight memory situations
+            # Using XPU-specific threshold if available, else conservative 30%
+            threshold_factor = 1.3
+            try:
+                from backend.xpu import XPU_MEMORY_CONFIG
+                threshold_factor = XPU_MEMORY_CONFIG.get("skip_unload_threshold", 1.3)
+            except ImportError:
+                pass
+
+            required_with_headroom = memory_required * threshold_factor
+            
+            if current_free >= required_with_headroom:
+                # Log the decision to skip (Observability)
+                if not args.args.verbose: # Only print in non-verbose to show it's working but not spam
+                    pass # Actually keep quiet by default unless verbose
+                else: 
+                     print(f"[Memory] Skipping unload - sufficient free memory: "
+                           f"{current_free / (1024**2):.0f}MB >= "
+                           f"{required_with_headroom / (1024**2):.0f}MB required")
+                return
+        except Exception as e:
+            # Never let memory check crash the app (Fault Tolerance)
+            print(f"[Memory] Warning: Could not check free memory: {e}")
+            # Continue with normal unload as fallback
+
     # this check fully unloads any 'abandoned' models
     for i in range(len(current_loaded_models) - 1, -1, -1):
         if sys.getrefcount(current_loaded_models[i].model) <= 2:

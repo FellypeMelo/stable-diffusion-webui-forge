@@ -82,8 +82,8 @@ if xpu_available:
             print(f"[Arc-Forge] VRAM: {arc_forge_config.get('vram_gb', '?')}GB")
             print(f"[Arc-Forge] Recommended VRAM mode: {arc_forge_config.get('vram_mode', 'normal')}")
             if arc_forge_config.get('vae_tiled', False):
-                print("[Arc-Forge] Tiled VAE recommended for this GPU")
-            print("")
+                print("[Arc-Forge] Tiled VAE enabled by config (Crash Prevention)")
+                VAE_ALWAYS_TILED = True
     except ImportError:
         pass
     except Exception as e:

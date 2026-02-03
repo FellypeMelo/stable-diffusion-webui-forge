@@ -16,7 +16,7 @@ ARC_GPU_CONFIGS = {
     "B580": {
         "vram_gb": 12,
         "vram_mode": "normal",
-        "vae_tiled": False,  # 12GB is enough for most operations
+        "vae_tiled": True,  # FORCE TRUE: 12GB insufficient for High-Res VAE Encode
         "inference_memory_mb": 1280,
         "description": "Intel Arc B580 - Great for SDXL",
     },

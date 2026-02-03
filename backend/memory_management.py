@@ -61,7 +61,33 @@ try:
     if torch.xpu.is_available():
         xpu_available = True
 except:
-    pass
+    # Native PyTorch 2.5+ supports XPU directly without IPEX
+    try:
+        if hasattr(torch, 'xpu') and torch.xpu.is_available():
+            xpu_available = True
+    except:
+        pass
+
+# =========================================
+# Arc-Forge: Intel Arc GPU Auto-Detection
+# =========================================
+arc_forge_config = None
+if xpu_available:
+    try:
+        from backend.xpu import get_arc_model, get_optimal_settings, get_device_info
+        arc_model = get_arc_model()
+        if arc_model:
+            arc_forge_config = get_optimal_settings(arc_model)
+            print(f"\n[Arc-Forge] Detected: Intel Arc {arc_model}")
+            print(f"[Arc-Forge] VRAM: {arc_forge_config.get('vram_gb', '?')}GB")
+            print(f"[Arc-Forge] Recommended VRAM mode: {arc_forge_config.get('vram_mode', 'normal')}")
+            if arc_forge_config.get('vae_tiled', False):
+                print("[Arc-Forge] Tiled VAE recommended for this GPU")
+            print("")
+    except ImportError:
+        pass
+    except Exception as e:
+        print(f"[Arc-Forge] Warning: Could not detect Arc GPU: {e}")
 
 try:
     if torch.backends.mps.is_available():
@@ -518,7 +544,11 @@ class LoadedModel:
         self.model.refresh_loras()
 
         if is_intel_xpu() and not args.disable_ipex_hijack:
-            self.real_model = torch.xpu.optimize(self.real_model.eval(), inplace=True, auto_kernel_selection=True, graph_mode=True)
+            # torch.xpu.optimize is IPEX-specific, may not exist in native PyTorch XPU
+            try:
+                self.real_model = torch.xpu.optimize(self.real_model.eval(), inplace=True, auto_kernel_selection=True, graph_mode=True)
+            except AttributeError:
+                pass  # Native PyTorch XPU doesn't have optimize()
 
         return self.real_model
 

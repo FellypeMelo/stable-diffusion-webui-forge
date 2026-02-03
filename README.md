@@ -31,6 +31,21 @@ cd Arc-Forge
 
 ---
 
+## ⚙️ PyTorch Version (Optional)
+
+Choose between **stable** or **nightly** PyTorch builds:
+
+```powershell
+.\install-pytorch-xpu.bat
+```
+
+| Version | Best For |
+|---------|----------|
+| **Stable** | Reliability, production use |
+| **Nightly** | Latest features, experimental |
+
+---
+
 ## 🎯 Supported GPUs
 
 | GPU | VRAM | Status | Notes |

@@ -188,15 +188,32 @@ def get_vram_mode_for_gpu(vram_gb: float) -> str:
         return "no_vram"
 
 
-def get_optimal_dtype() -> "torch.dtype":
     """
     Get the optimal data type for Intel Arc GPUs.
     
     Returns:
-        torch.float16: FP16 provides best speed (4.0it/s vs 3.0it/s on B580).
-        (Note: BF16 is more stable but 25% slower on current IPEX)
+        torch.dtype: FP16 (Safe) or FP8 (Turbo) based on Settings.
     """
     import torch
+    from modules import shared
+    
+    # 1. Check User Preference (Default to Auto/FP16 if not set)
+    # Note: shared.opts might not be initialized during early startup
+    try:
+        precision_mode = getattr(shared.opts, "arc_precision_mode", "Auto (FP16)")
+    except Exception:
+        precision_mode = "Auto (FP16)"
+
+    # 2. FP8 Turbo Mode (B580+ Only)
+    if precision_mode == "FP8 (Turbo)":
+        # Check for PyTorch 2.1+ FP8 support
+        if hasattr(torch, 'float8_e4m3fn'):
+            return torch.float8_e4m3fn
+        else:
+            print("[Arc-Forge] Warning: FP8 requested but torch.float8_e4m3fn missing. Fallback to FP16.")
+            return torch.float16
+
+    # 3. Default / Auto / FP16
     return torch.float16
 
 

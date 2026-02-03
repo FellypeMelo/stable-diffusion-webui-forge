@@ -499,6 +499,24 @@ def forge_model_reload():
     timer.record("cache state dict")
 
     dynamic_args['forge_unet_storage_dtype'] = model_data.forge_loading_parameters.get('unet_storage_dtype', None)
+
+    # ─────────────────────────────────────────────────────────────
+    # Arc-Forge v1.3: Safe Speed Optimization (BFloat16)
+    # Rationale: Arc XMX engines are natively optimized for BF16
+    # ─────────────────────────────────────────────────────────────
+    try:
+        from backend.xpu.device import is_arc_gpu
+        from backend.xpu.config import get_optimal_dtype
+        
+        if is_arc_gpu():
+            # If dtype wasn't explicitly set by user/script, force Optimal (BF16)
+            if dynamic_args['forge_unet_storage_dtype'] is None:
+                optimal_dtype = get_optimal_dtype()
+                dynamic_args['forge_unet_storage_dtype'] = optimal_dtype
+                print(f"[Arc-Forge] Optimized Logic: Enforcing {optimal_dtype} for UNet (Speed + Stability)")
+    except Exception as e:
+        print(f"[Arc-Forge] Warning: Optimization failed: {e}")
+
     dynamic_args['embedding_dir'] = cmd_opts.embeddings_dir
     dynamic_args['emphasis_name'] = opts.emphasis
     sd_model = forge_loader(state_dict, additional_state_dicts=additional_state_dicts)

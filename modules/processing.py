@@ -376,6 +376,34 @@ class StableDiffusionProcessing:
         return latent_image.new_zeros(latent_image.shape[0], 5, 1, 1)
 
     def init(self, all_prompts, all_seeds, all_subseeds):
+        # ─────────────────────────────────────────────────────────────
+        # Arc-Forge: Crash Prevention for High-Res Upscaling
+        # Rationale: Arc drivers crash on large allocations (R-ESRGAN)
+        # ─────────────────────────────────────────────────────────────
+        try:
+            from backend.xpu.device import is_arc_gpu
+            if is_arc_gpu():
+                # 1. Enforce tiling for VAE if not already set
+                if self.tiling is None:
+                    # Check config recommendations
+                    from backend.xpu.config import get_optimal_settings
+                    settings = get_optimal_settings()
+                    if settings.get("vae_tiled", True):
+                        self.tiling = True
+                
+                # 2. Restrict ESRGAN tile size (Global Option Override)
+                # Default is often 512 which crashes 12GB cards on 4x upscale
+                # 192 is a safe "sweet spot" for 12GB
+                current_tile = opts.ESRGAN_tile
+                SAFE_TILE_LIMIT = 192
+                
+                if current_tile > SAFE_TILE_LIMIT:
+                    print(f"[Arc-Forge] Enforcing safe ESRGAN tile size: "
+                          f"{current_tile} -> {SAFE_TILE_LIMIT} (Crash Prevention)")
+                    opts.ESRGAN_tile = SAFE_TILE_LIMIT
+        except Exception as e:
+            print(f"[Arc-Forge] Warning: Tiling enforcement failed: {e}")
+            
         pass
 
     def sample(self, conditioning, unconditional_conditioning, seeds, subseeds, subseed_strength, prompts):

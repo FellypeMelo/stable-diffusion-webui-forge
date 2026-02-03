@@ -3,6 +3,7 @@ from modules import shared, script_callbacks
 import torch
 
 def on_ui_settings():
+    print("[Arc-Forge] Registering UI Settings...")
     section = ('arc_xpu', "Intel Arc")
     
     shared.opts.add_option(

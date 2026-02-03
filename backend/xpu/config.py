@@ -188,6 +188,7 @@ def get_vram_mode_for_gpu(vram_gb: float) -> str:
         return "no_vram"
 
 
+def get_optimal_dtype() -> "torch.dtype":
     """
     Get the optimal data type for Intel Arc GPUs.
     

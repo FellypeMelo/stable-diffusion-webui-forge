@@ -620,8 +620,12 @@ def free_memory(memory_required, device, keep_loaded=[], free_all=False):
             
             if current_free >= required_with_headroom:
                 # Log the decision to skip (Observability)
-                if not args.args.verbose: # Only print in non-verbose to show it's working but not spam
-                    pass # Actually keep quiet by default unless verbose
+                # Check verbose flag safely (handle potential attribute missing)
+                verbose = getattr(args, 'verbose', False)
+                
+                if not verbose: 
+                    # Clean Code: Keep quiet by default
+                    pass 
                 else: 
                      print(f"[Memory] Skipping unload - sufficient free memory: "
                            f"{current_free / (1024**2):.0f}MB >= "
@@ -629,7 +633,9 @@ def free_memory(memory_required, device, keep_loaded=[], free_all=False):
                 return
         except Exception as e:
             # Never let memory check crash the app (Fault Tolerance)
-            print(f"[Memory] Warning: Could not check free memory: {e}")
+            # Only print warning if verbose, to keep bootup clean unless debugging
+            if getattr(args, 'verbose', False):
+                print(f"[Memory] Warning: Could not check free memory: {e}")
             # Continue with normal unload as fallback
 
     # this check fully unloads any 'abandoned' models

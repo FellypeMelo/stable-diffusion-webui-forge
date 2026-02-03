@@ -1,18 +1,18 @@
 @echo off
+REM ========================================
+REM Arc-Forge - Intel Arc Optimized
+REM https://github.com/FellypeMelo/Arc-Forge
+REM ========================================
 
 set PYTHON=
 set GIT=
 set VENV_DIR=
-set COMMANDLINE_ARGS=
 
-@REM Uncomment following code to reference an existing A1111 checkout.
-@REM set A1111_HOME=Your A1111 checkout dir
-@REM
-@REM set VENV_DIR=%A1111_HOME%/venv
-@REM set COMMANDLINE_ARGS=%COMMANDLINE_ARGS% ^
-@REM  --ckpt-dir %A1111_HOME%/models/Stable-diffusion ^
-@REM  --hypernetwork-dir %A1111_HOME%/models/hypernetworks ^
-@REM  --embeddings-dir %A1111_HOME%/embeddings ^
-@REM  --lora-dir %A1111_HOME%/models/Lora
+REM Arc-Forge auto-detects optimal settings for your GPU
+REM Troubleshooting:
+REM   - OOM errors? Add: --always-low-vram
+REM   - Still crashing? Add: --always-no-vram --vae-in-cpu
+set COMMANDLINE_ARGS=--skip-torch-cuda-test
 
 call webui.bat
+

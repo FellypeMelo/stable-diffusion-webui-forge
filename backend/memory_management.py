@@ -170,6 +170,11 @@ try:
 except:
     OOM_EXCEPTION = Exception
 
+# Arc-Forge: XPU needs RuntimeError catch for memory failures
+# XPU memory errors often manifest as RuntimeError or MemoryError
+if xpu_available:
+    OOM_EXCEPTION = (RuntimeError, MemoryError, Exception)
+
 if directml_enabled:
     OOM_EXCEPTION = Exception
 

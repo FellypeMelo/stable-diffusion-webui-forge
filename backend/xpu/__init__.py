@@ -25,6 +25,11 @@ from .config import (
     get_optimal_memory_format,
 )
 
+from .safety import (
+    XPUCaptureContext,
+    GracefulError,
+)
+
 from .memory import (
     get_free_memory,
     get_memory_stats,
@@ -44,6 +49,9 @@ __all__ = [
     "get_optimal_settings",
     "get_optimal_dtype",
     "get_optimal_memory_format",
+    # Safety
+    "XPUCaptureContext",
+    "GracefulError",
     # Memory
     "get_free_memory",
     "get_memory_stats",

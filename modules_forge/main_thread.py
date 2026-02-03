@@ -27,7 +27,10 @@ class Task:
     def work(self):
         global last_exception
         try:
-            self.result = self.func(*self.args, **self.kwargs)
+            from backend.xpu.safety import XPUCaptureContext
+            # Arc-Forge Safety Net: Catch and recover from XPU crashes
+            with XPUCaptureContext(f"Task-{self.task_id}"):
+                self.result = self.func(*self.args, **self.kwargs)
             self.exception = None
             last_exception = None
         except Exception as e:

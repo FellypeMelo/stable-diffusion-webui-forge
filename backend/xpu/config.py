@@ -193,10 +193,11 @@ def get_optimal_dtype() -> "torch.dtype":
     Get the optimal data type for Intel Arc GPUs.
     
     Returns:
-        torch.bfloat16: Arc XMX engines are natively optimized for BF16.
+        torch.float16: FP16 provides best speed (4.0it/s vs 3.0it/s on B580).
+        (Note: BF16 is more stable but 25% slower on current IPEX)
     """
     import torch
-    return torch.bfloat16
+    return torch.float16
 
 
 def get_optimal_memory_format() -> "torch.memory_format":

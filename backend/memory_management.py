@@ -83,11 +83,11 @@ if xpu_available:
             print(f"[Arc-Forge] Recommended VRAM mode: {arc_forge_config.get('vram_mode', 'normal')}")
             
             # Observability: Log Optimization Policy
-            from backend.xpu.config import get_optimal_dtype, get_optimal_memory_format
+            from backend.xpu.config import get_optimal_dtype
             opt_dtype = get_optimal_dtype()
-            opt_format = "Channels Last (NHWC)" if get_optimal_memory_format() == torch.channels_last else "Channels First (NCHW)"
             
-            print(f"[Arc-Forge] Optimization Policy: {opt_dtype} + {opt_format}")
+            # Channels Last disabled due to performance regression on B580
+            print(f"[Arc-Forge] Optimization Policy: {opt_dtype} Only (Note: Channels Last disabled for speed)")
             
             if arc_forge_config.get('vae_tiled', False):
                 print("[Arc-Forge] Tiled VAE enabled by config (Crash Prevention)")

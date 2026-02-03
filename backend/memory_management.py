@@ -108,6 +108,63 @@ if args.always_cpu:
     cpu_state = CPUState.CPU
 
 
+class MemoryGovernor:
+    """
+    Arc-Forge: Centralized Memory Management for Intel Arc.
+    Ensures we always keep a safe buffer (Headroom) to prevent system crashes.
+    """
+    @staticmethod
+    def get_headroom_mb():
+        try:
+            from modules import shared
+            # Default to 2GB (2048MB) if not set.
+            # This is critical for B580 (12GB) to allow Windows/System overhead.
+            return getattr(shared.opts, "arc_memory_headroom", 2048)
+        except Exception:
+            return 2048
+
+    @staticmethod
+    def get_free_vram_mb(device):
+        try:
+            free_bytes = get_free_memory(device)
+            return free_bytes / (1024 * 1024)
+        except:
+            return 0
+
+    @staticmethod
+    def check_and_clear(device, required_mb=0):
+        """
+        Checks if we have enough memory + headroom.
+        If tight, performs aggressive cleanup.
+        """
+        headroom = MemoryGovernor.get_headroom_mb()
+        free_mb = MemoryGovernor.get_free_vram_mb(device)
+        
+        # 1. Check if we are safe
+        if free_mb > (required_mb + headroom):
+            return True # Safe to proceed/skip unload
+            
+        # 2. Tight: Try Cleanup
+        soft_empty_cache()
+        if is_intel_xpu():
+            try:
+                torch.xpu.empty_cache()
+            except:
+                pass
+                
+        # 3. Check again
+        free_mb = MemoryGovernor.get_free_vram_mb(device)
+        if free_mb > (required_mb + headroom):
+            return True
+            
+        # 4. Dangerous: Less than critical shutdown limit (512MB)
+        if free_mb < 512:
+            print(f"[MemoryGovernor] 🚨 CRITICAL LOW MEMORY: {free_mb:.0f}MB Free. Force Unload!")
+            return False # Signal needed to unload everything
+            
+        return False # Signal needed to unload some things
+
+
 def is_intel_xpu():
     global cpu_state
     global xpu_available
@@ -609,42 +666,26 @@ def free_memory(memory_required, device, keep_loaded=[], free_all=False):
     Arc-Forge Optimization: Early-exit if sufficient memory available.
     """
     # ─────────────────────────────────────────────────────────────
-    # Arc-Forge: Early-exit optimization
-    # Skip unload if we already have enough free memory
+    # Arc-Forge: Memory Governor (Headroom Protection)
     # ─────────────────────────────────────────────────────────────
     if not free_all:
         try:
-            current_free = get_free_memory(device)
-            # Add headroom to prevent tight memory situations
-            # Using XPU-specific threshold if available, else conservative 30%
-            threshold_factor = 1.3
-            try:
-                from backend.xpu import XPU_MEMORY_CONFIG
-                threshold_factor = XPU_MEMORY_CONFIG.get("skip_unload_threshold", 1.3)
-            except ImportError:
-                pass
-
-            required_with_headroom = memory_required * threshold_factor
+            # Check if we have enough memory to skip unloading
+            # This respects the User's Headroom setting (e.g. 2GB)
+            required_mb = memory_required / (1024 * 1024)
+            is_safe = MemoryGovernor.check_and_clear(device, required_mb)
             
-            if current_free >= required_with_headroom:
-                # Log the decision to skip (Observability)
-                # Check verbose flag safely (handle potential attribute missing)
-                verbose = getattr(args, 'verbose', False)
-                
-                if not verbose: 
-                    # Clean Code: Keep quiet by default
-                    pass 
-                else: 
-                     print(f"[Memory] Skipping unload - sufficient free memory: "
-                           f"{current_free / (1024**2):.0f}MB >= "
-                           f"{required_with_headroom / (1024**2):.0f}MB required")
+            if is_safe:
+                # Log success if verbose
+                if getattr(args, 'verbose', False):
+                    free_mb = MemoryGovernor.get_free_vram_mb(device)
+                    print(f"[MemoryGovernor] Safe! Skipping unload. Free: {free_mb:.0f}MB, Req: {required_mb:.0f}MB")
                 return
+
         except Exception as e:
-            # Never let memory check crash the app (Fault Tolerance)
-            # Only print warning if verbose, to keep bootup clean unless debugging
             if getattr(args, 'verbose', False):
-                print(f"[Memory] Warning: Could not check free memory: {e}")
-            # Continue with normal unload as fallback
+                print(f"[MemoryGovernor] Check failed: {e}")
+            # Fallback to standard unload checks
 
     # this check fully unloads any 'abandoned' models
     for i in range(len(current_loaded_models) - 1, -1, -1):

@@ -383,13 +383,8 @@ class StableDiffusionProcessing:
         try:
             from backend.xpu.device import is_arc_gpu
             if is_arc_gpu():
-                # 1. Enforce tiling for VAE if not already set
-                if self.tiling is None:
-                    # Check config recommendations
-                    from backend.xpu.config import get_optimal_settings
-                    settings = get_optimal_settings()
-                    if settings.get("vae_tiled", True):
-                        self.tiling = True
+                # 1. (Removed) Incorrect 'self.tiling' logic
+                # Tiled VAE is now handled by backend/memory_management.py via config
                 
                 # 2. Restrict ESRGAN tile size (Global Option Override)
                 # Default is often 512 which crashes 12GB cards on 4x upscale

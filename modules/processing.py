@@ -393,11 +393,13 @@ class StableDiffusionProcessing:
                 
                 # 2. Restrict ESRGAN tile size (Global Option Override)
                 # Default is often 512 which crashes 12GB cards on 4x upscale
+                # 0 means "no tiling" which is GUARANTEED crash on High-Res
                 # 192 is a safe "sweet spot" for 12GB
                 current_tile = opts.ESRGAN_tile
                 SAFE_TILE_LIMIT = 192
                 
-                if current_tile > SAFE_TILE_LIMIT:
+                # Fix: Handle 0 (no tiling) explicitly
+                if current_tile == 0 or current_tile > SAFE_TILE_LIMIT:
                     print(f"[Arc-Forge] Enforcing safe ESRGAN tile size: "
                           f"{current_tile} -> {SAFE_TILE_LIMIT} (Crash Prevention)")
                     opts.ESRGAN_tile = SAFE_TILE_LIMIT

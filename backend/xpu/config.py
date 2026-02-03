@@ -78,6 +78,55 @@ DEFAULT_ARC_CONFIG = {
 }
 
 
+# =========================================================================
+# XPU Memory Management Configuration
+# =========================================================================
+# These constants control memory behavior for Intel Arc GPUs.
+# Tuned for stability and performance based on Arc architecture.
+#
+# KISS Principle: Simple, explicit values with clear rationale.
+# =========================================================================
+
+XPU_MEMORY_CONFIG = {
+    # ─────────────────────────────────────────────────────────────────────
+    # Safety Margin: Keep this percentage of VRAM free as buffer
+    # Rationale: XPU driver needs headroom for internal allocations
+    # ─────────────────────────────────────────────────────────────────────
+    "safety_margin_percent": 0.15,
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # Minimum Free Memory Before Cleanup (MB)
+    # Rationale: Avoid aggressive cleanup for small operations
+    # ─────────────────────────────────────────────────────────────────────
+    "min_free_before_cleanup_mb": 512,
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # Skip Unload Threshold
+    # If free memory >= required * this factor, skip unload entirely
+    # Rationale: Prevent unnecessary model unload/reload cycles
+    # ─────────────────────────────────────────────────────────────────────
+    "skip_unload_threshold": 1.3,
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # Maximum Retry Attempts
+    # How many times to retry a failed memory operation
+    # ─────────────────────────────────────────────────────────────────────
+    "max_retry_attempts": 3,
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # Inference Memory Reserve (MB)
+    # Memory reserved specifically for inference operations
+    # ─────────────────────────────────────────────────────────────────────
+    "inference_reserve_mb": 1024,
+    
+    # ─────────────────────────────────────────────────────────────────────
+    # VAE Tile Sizes for Fallback (smallest to largest)
+    # Used during progressive retry on VAE memory failures
+    # ─────────────────────────────────────────────────────────────────────
+    "vae_fallback_tile_sizes": [(32, 32), (48, 48), (64, 64)],
+}
+
+
 def get_optimal_settings(model: Optional[str] = None) -> dict:
     """
     Get optimal settings for an Intel Arc GPU model.

@@ -19,6 +19,7 @@ from .device import (
 
 from .config import (
     ARC_GPU_CONFIGS,
+    XPU_MEMORY_CONFIG,
     get_optimal_settings,
 )
 

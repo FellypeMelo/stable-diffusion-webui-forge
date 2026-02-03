@@ -39,3 +39,24 @@ def on_ui_settings():
     )
 
 script_callbacks.on_ui_settings(on_ui_settings)
+
+# Arc-Forge: Apply Settings to Backend
+# This breaks the circular dependency between backend <-> modules
+try:
+    from backend.xpu import config
+    
+    # 1. Apply immediately on load (if shared.opts is ready)
+    if hasattr(shared.opts, "arc_precision_mode"):
+        config.set_precision_mode(shared.opts.arc_precision_mode)
+        print(f"[Arc-Forge] Precision Mode Set: {shared.opts.arc_precision_mode}")
+
+    # 2. Register callback to apply when settings change/load
+    def on_app_started(demo, app):
+        mode = getattr(shared.opts, "arc_precision_mode", "Auto (FP16)")
+        config.set_precision_mode(mode)
+        print(f"[Arc-Forge] Precision Mode Applied: {mode}")
+
+    script_callbacks.on_app_started(on_app_started)
+
+except Exception as e:
+    print(f"[Arc-Forge] Error applying settings: {e}")

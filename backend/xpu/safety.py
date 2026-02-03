@@ -3,7 +3,7 @@ import sys
 import gc
 import torch
 import traceback
-from backend.xpu.config import get_memory_stats
+from backend.xpu.memory import get_memory_stats
 
 class GracefulError(Exception):
     """
@@ -39,7 +39,7 @@ class XPUCaptureContext(AbstractContextManager):
                 
                 print(f"\n[Arc-Forge] 🚨 CRITICAL XPU ERROR during '{self.operation_name}'")
                 print(f"[Arc-Forge] Exception: {exc_val}")
-                print(f"[Arc-Forge] VRAM State at Crash: Used={vram_state.get('used', '?')}MB, Total={vram_state.get('total', '?')}MB")
+                print(f"[Arc-Forge] VRAM State at Crash: Used={vram_state.get('active_mb', '?')}MB, Total={vram_state.get('total_mb', '?')}MB")
                 
                 # 3. Emergency Cleanup
                 print("[Arc-Forge] 🚑 Performing Emergency Cleanup...")

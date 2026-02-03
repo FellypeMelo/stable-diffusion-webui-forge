@@ -188,6 +188,17 @@ def get_vram_mode_for_gpu(vram_gb: float) -> str:
         return "no_vram"
 
 
+# Global state to avoid circular imports
+_PRECISION_MODE = "Auto (FP16)"
+
+def set_precision_mode(mode: str):
+    """
+    Set the precision mode from the UI layer.
+    """
+    global _PRECISION_MODE
+    _PRECISION_MODE = mode
+
+
 def get_optimal_dtype() -> "torch.dtype":
     """
     Get the optimal data type for Intel Arc GPUs.
@@ -196,14 +207,9 @@ def get_optimal_dtype() -> "torch.dtype":
         torch.dtype: FP16 (Safe) or FP8 (Turbo) based on Settings.
     """
     import torch
-    from modules import shared
     
-    # 1. Check User Preference (Default to Auto/FP16 if not set)
-    # Note: shared.opts might not be initialized during early startup
-    try:
-        precision_mode = getattr(shared.opts, "arc_precision_mode", "Auto (FP16)")
-    except Exception:
-        precision_mode = "Auto (FP16)"
+    # 1. Check Global Preference (Pushed from UI)
+    precision_mode = _PRECISION_MODE
 
     # 2. FP8 Turbo Mode (B580+ Only)
     if precision_mode == "FP8 (Turbo)":

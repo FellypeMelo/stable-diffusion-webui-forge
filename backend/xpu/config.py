@@ -186,3 +186,25 @@ def get_vram_mode_for_gpu(vram_gb: float) -> str:
         return "low"
     else:
         return "no_vram"
+
+
+def get_optimal_dtype() -> "torch.dtype":
+    """
+    Get the optimal data type for Intel Arc GPUs.
+    
+    Returns:
+        torch.bfloat16: Arc XMX engines are natively optimized for BF16.
+    """
+    import torch
+    return torch.bfloat16
+
+
+def get_optimal_memory_format() -> "torch.memory_format":
+    """
+    Get the optimal memory format for Intel Arc GPUs.
+    
+    Returns:
+        torch.channels_last: Arc performs best with NHWC layout (channels_last).
+    """
+    import torch
+    return torch.channels_last

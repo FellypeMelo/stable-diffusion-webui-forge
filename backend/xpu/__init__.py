@@ -21,6 +21,8 @@ from .config import (
     ARC_GPU_CONFIGS,
     XPU_MEMORY_CONFIG,
     get_optimal_settings,
+    get_optimal_dtype,
+    get_optimal_memory_format,
 )
 
 from .memory import (
@@ -40,6 +42,8 @@ __all__ = [
     # Config
     "ARC_GPU_CONFIGS",
     "get_optimal_settings",
+    "get_optimal_dtype",
+    "get_optimal_memory_format",
     # Memory
     "get_free_memory",
     "get_memory_stats",

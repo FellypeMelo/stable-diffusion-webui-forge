@@ -141,8 +141,27 @@ class VAE:
                 samples = samples_in[x:x + batch_number].to(self.vae_dtype).to(self.device)
                 pixel_samples[x:x + batch_number] = torch.clamp((self.first_stage_model.decode(samples).to(self.output_device).float() + 1.0) / 2.0, min=0.0, max=1.0)
         except memory_management.OOM_EXCEPTION as e:
-            print("Warning: Ran out of memory when regular VAE decoding, retrying with tiled VAE decoding.")
-            pixel_samples = self.decode_tiled_(samples_in)
+            # Arc-Forge Recovery System
+            print(f"[Arc-Forge Recovery] VAE decode failed: {type(e).__name__}")
+            print("[Arc-Forge Recovery] Clearing cache and retrying with tiled VAE...")
+            
+            # Step 1: Clear memory cache to maximize available VRAM
+            memory_management.soft_empty_cache(True)
+            
+            # Step 2: Retry with tiled decode (standard tile size)
+            try:
+                pixel_samples = self.decode_tiled_(samples_in)
+                print("[Arc-Forge Recovery] Tiled VAE decode successful")
+            except Exception as fallback_error:
+                print(f"[Arc-Forge Recovery] Tiled VAE also failed: {fallback_error}")
+                # Step 3: Last resort - reduce tile size strictly for stability
+                try:
+                    # Very small tiles to ensure success even on low VRAM
+                    pixel_samples = self.decode_tiled_(samples_in, tile_x=32, tile_y=32, overlap=16)
+                    print("[Arc-Forge Recovery] Minimal tile (32x32) decode successful")
+                except Exception as final_error:
+                    print(f"[Arc-Forge Error] VAE decode failed completely: {final_error}")
+                    raise final_error
 
         pixel_samples = pixel_samples.to(self.output_device).movedim(1, -1)
         return pixel_samples

@@ -26,8 +26,25 @@ class ForgeOperationsXPU(ops.ForgeOperations):
                         # 1. Cast Input to FP8
                         x_fp8 = x.to(target_dtype)
 
-                        # 2. Cast Weight to FP8
-                        w_fp8 = weight.to(target_dtype)
+                        # 2. Cast Weight to FP8 (with Caching)
+                        w_fp8 = None
+
+                        # Calculate cache key based on weight identity and version
+                        # We use data_ptr() for identity and _version for content changes
+                        current_w_id = weight.data_ptr()
+                        current_w_version = getattr(weight, '_version', 0)
+                        cache_key = (current_w_id, current_w_version, target_dtype)
+
+                        # Check existing cache
+                        if hasattr(self, '_fp8_cache_key') and self._fp8_cache_key == cache_key:
+                            if hasattr(self, '_fp8_weight'):
+                                w_fp8 = self._fp8_weight
+
+                        # If cache miss or invalid, perform cast and update cache
+                        if w_fp8 is None:
+                            w_fp8 = weight.to(target_dtype)
+                            self._fp8_cache_key = cache_key
+                            self._fp8_weight = w_fp8
 
                         # 3. Perform Linear Operation (Matmul)
                         # PyTorch XPU backend handles fp8 matmul when inputs are fp8
@@ -70,8 +87,24 @@ class ForgeOperationsXPU(ops.ForgeOperations):
                         # 1. Cast Input to FP8
                         x_fp8 = x.to(target_dtype)
 
-                        # 2. Cast Weight to FP8
-                        w_fp8 = weight.to(target_dtype)
+                        # 2. Cast Weight to FP8 (with Caching)
+                        w_fp8 = None
+
+                        # Calculate cache key
+                        current_w_id = weight.data_ptr()
+                        current_w_version = getattr(weight, '_version', 0)
+                        cache_key = (current_w_id, current_w_version, target_dtype)
+
+                        # Check existing cache
+                        if hasattr(self, '_fp8_cache_key') and self._fp8_cache_key == cache_key:
+                            if hasattr(self, '_fp8_weight'):
+                                w_fp8 = self._fp8_weight
+
+                        # If cache miss or invalid, perform cast and update cache
+                        if w_fp8 is None:
+                            w_fp8 = weight.to(target_dtype)
+                            self._fp8_cache_key = cache_key
+                            self._fp8_weight = w_fp8
 
                         # 3. Perform Conv2d Operation
                         # PyTorch XPU backend handles fp8 conv2d when inputs are fp8

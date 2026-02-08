@@ -38,6 +38,16 @@ def on_ui_settings():
         )
     )
 
+    shared.opts.add_option(
+        "arc_enable_native_attention",
+        shared.OptionInfo(
+            False,
+            "Enable ArcAttention (High Performance)",
+            gr.Checkbox,
+            section=section
+        ).info("Experimental: Forces Cross Attention Optimization to 'ArcAttention'.")
+    )
+
 script_callbacks.on_ui_settings(on_ui_settings)
 
 # Arc-Forge: Apply Settings to Backend
@@ -55,6 +65,10 @@ try:
         mode = getattr(shared.opts, "arc_precision_mode", "Auto (FP16)")
         config.set_precision_mode(mode)
         print(f"[Arc-Forge] Precision Mode Applied: {mode}")
+
+        if getattr(shared.opts, "arc_enable_native_attention", False):
+            print("[Arc-Forge] Enforcing ArcAttention Optimization...")
+            shared.opts.cross_attention_optimization = "ArcAttention"
 
     script_callbacks.on_app_started(on_app_started)
 

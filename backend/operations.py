@@ -450,7 +450,24 @@ def using_forge_operations(operations=None, device=None, dtype=None, manual_cast
         elif bnb_avaliable and bnb_dtype in ['nf4', 'fp4']:
             operations = ForgeOperationsBNB4bits
         else:
-            operations = ForgeOperations
+            # XPU FP8 Check
+            is_fp8 = False
+            try:
+                if hasattr(torch, 'float8_e4m3fn') and dtype == torch.float8_e4m3fn:
+                    is_fp8 = True
+                elif hasattr(torch, 'float8_e5m2') and dtype == torch.float8_e5m2:
+                    is_fp8 = True
+            except:
+                pass
+
+            if is_fp8 and device is not None and getattr(device, 'type', '') == 'xpu':
+                try:
+                    from backend.operations_xpu import ForgeOperationsXPU
+                    operations = ForgeOperationsXPU
+                except ImportError:
+                    operations = ForgeOperations
+            else:
+                operations = ForgeOperations
 
     op_names = ['Linear', 'Conv1d', 'Conv2d', 'Conv3d', 'ConvTranspose1d', 'ConvTranspose2d', 'ConvTranspose3d', 'GroupNorm', 'LayerNorm', 'Embedding']
     backups = {op_name: getattr(torch.nn, op_name) for op_name in op_names}

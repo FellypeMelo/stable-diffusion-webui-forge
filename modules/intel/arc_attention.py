@@ -7,6 +7,13 @@ from modules import shared
 # Default limit is 4GB (hard limit for single allocation on Arc)
 MAX_ARC_ALLOCATION_LIMIT = 4 * 1024 * 1024 * 1024
 
+# Simple logger
+def log_arc(msg):
+    # Only log sparingly to avoid spam, or on critical events
+    # For now, we print to stdout so the user can verify it's working
+    # But we can guard it with a verbose flag if needed
+    print(f"[Bolt-Arc] {msg}")
+
 def get_arc_allocation_limit(device_id):
     """
     Returns the maximum safe allocation size for a single tensor on the given device.
@@ -69,6 +76,9 @@ def sliced_sdp_attention(query, key, value, attn_mask=None, dropout_p=0.0, is_ca
         )
 
     # 3. Chunking Strategy
+    # Only log once per generation/batch to avoid spam
+    # log_arc(f"Slicing Attention: {required_memory / 1024**2:.1f}MB > {limit / 1024**2:.1f}MB limit. L={L}, S={S}")
+
     denominator = max(1, total_batch * S * elem_size)
     chunk_size = limit // denominator
 

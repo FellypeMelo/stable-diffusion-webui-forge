@@ -1,0 +1,3 @@
+## 2025-05-23 - Optimizing SDPA Memory Allocation for Arc 4GB Limit
+**Learning:** Intel Arc GPUs (B580/A770) have a strict 4GB single allocation limit that necessitates chunking large attention operations. The naive implementation accumulated chunks in a list and used `torch.cat`, which doubles peak memory usage (list of chunks + final tensor) and risks OOM on high-resolution generation.
+**Action:** Pre-allocate the output tensor using `torch.empty_like` and fill it slice-by-slice. This avoids the overhead of holding intermediate chunks and the final copy operation of `torch.cat`, enabling higher resolution generation within the same memory footprint.

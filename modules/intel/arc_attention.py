@@ -90,7 +90,10 @@ def sliced_sdp_attention(query, key, value, attn_mask=None, dropout_p=0.0, is_ca
         chunk_size = (chunk_size // 32) * 32
 
     # 4. Processing Loop (Query Chunking)
-    outputs = []
+    # Optimized: Pre-allocate output tensor to reduce peak memory usage.
+    # Instead of holding a list of chunks (memory: Output) and concatenating (memory: Output),
+    # resulting in 2x peak memory, we allocate Output once and write into it.
+    result = torch.empty_like(query)
 
     def get_mask_chunk(start, end):
         if attn_mask is None:
@@ -110,7 +113,8 @@ def sliced_sdp_attention(query, key, value, attn_mask=None, dropout_p=0.0, is_ca
             q_chunk, key, value,
             attn_mask=mask_chunk, dropout_p=dropout_p, is_causal=is_causal, scale=scale
         )
-        outputs.append(out_chunk)
 
-    # 5. Concatenate
-    return torch.cat(outputs, dim=-2)
+        # Write directly to result tensor
+        result[..., i:end, :] = out_chunk
+
+    return result

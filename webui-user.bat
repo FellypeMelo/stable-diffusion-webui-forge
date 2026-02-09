@@ -12,7 +12,7 @@ REM Arc-Forge auto-detects optimal settings for your GPU
 REM Troubleshooting:
 REM   - OOM errors? Add: --always-low-vram
 REM   - Still crashing? Add: --always-no-vram --vae-in-cpu
-set COMMANDLINE_ARGS=--skip-torch-cuda-test
+set COMMANDLINE_ARGS=--skip-torch-cuda-test --pin-shared-memory --cuda-stream
 
 call webui.bat
 

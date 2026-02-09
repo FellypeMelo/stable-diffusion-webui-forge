@@ -8,6 +8,7 @@ from contextlib import nullcontext
 
 from modules import errors, shared, devices
 from backend.args import args
+from backend import stream  # Import backend.stream for XPU support
 from typing import Optional
 
 log = logging.getLogger(__name__)
@@ -37,7 +38,8 @@ class State:
     def __init__(self):
         self.server_start = time.time()
         if args.cuda_stream:
-            self.vae_stream = torch.cuda.Stream()
+            # Use backend.stream to handle both CUDA and XPU
+            self.vae_stream = stream.get_new_stream()
         else:
             self.vae_stream = None
 
@@ -59,7 +61,7 @@ class State:
     @server_command.setter
     def server_command(self, value: Optional[str]) -> None:
         """
-        Set the server command to `value` and signal that it's been set.
+        Set the server command to  and signal that it's been set.
         """
         self._server_command = value
         self._server_command_signal.set()
@@ -162,8 +164,15 @@ class State:
             if self.vae_stream is not None:
                 # not waiting on default stream will result in corrupt results
                 # will not block main stream under any circumstances
-                self.vae_stream.wait_stream(torch.cuda.default_stream())
-                vae_context = torch.cuda.stream(self.vae_stream)
+                # Fix: Use backend.stream to get the current stream (CUDA or XPU)
+                self.vae_stream.wait_stream(stream.get_current_stream())
+
+                # Fix: Use backend.stream context
+                stream_ctx_func = stream.stream_context()
+                if stream_ctx_func:
+                    vae_context = stream_ctx_func(self.vae_stream)
+                else:
+                    vae_context = nullcontext()
             else:
                 vae_context = nullcontext()
             with vae_context:

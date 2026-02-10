@@ -14,6 +14,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+from starlette.concurrency import run_in_threadpool
 from secrets import compare_digest
 
 import modules.shared as shared
@@ -152,7 +153,7 @@ def api_middleware(app: FastAPI):
         res.headers["X-Process-Time"] = duration
         endpoint = req.scope.get('path', 'err')
         if shared.cmd_opts.api_log and endpoint.startswith('/sdapi'):
-            print('API {t} {code} {prot}/{ver} {method} {endpoint} {cli} {duration}'.format(
+            msg = 'API {t} {code} {prot}/{ver} {method} {endpoint} {cli} {duration}'.format(
                 t=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
                 code=res.status_code,
                 ver=req.scope.get('http_version', '0.0'),
@@ -161,7 +162,8 @@ def api_middleware(app: FastAPI):
                 method=req.scope.get('method', 'err'),
                 endpoint=endpoint,
                 duration=duration,
-            ))
+            )
+            await run_in_threadpool(print, msg)
         return res
 
     def handle_exception(request: Request, e: Exception):

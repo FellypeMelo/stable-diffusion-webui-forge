@@ -57,15 +57,20 @@ def setUpscalers(req: dict):
 
 def verify_url(url):
     """Returns True if the url refers to a global resource."""
-
-    import socket
     from urllib.parse import urlparse
+    import socket
+    import ipaddress
+
     try:
         parsed_url = urlparse(url)
-        domain_name = parsed_url.netloc
-        host = socket.gethostbyname_ex(domain_name)
-        for ip in host[2]:
-            ip_addr = ipaddress.ip_address(ip)
+        hostname = parsed_url.hostname
+        if not hostname:
+            return False
+
+        # Resolve all addresses (IPv4 and IPv6) to prevent SSRF via multi-homed hosts or IPv6
+        for res in socket.getaddrinfo(hostname, None):
+            ip_str = res[4][0]
+            ip_addr = ipaddress.ip_address(ip_str)
             if not ip_addr.is_global:
                 return False
     except Exception:
@@ -79,11 +84,28 @@ def decode_base64_to_image(encoding):
         if not opts.api_enable_requests:
             raise HTTPException(status_code=500, detail="Requests not allowed")
 
-        if opts.api_forbid_local_requests and not verify_url(encoding):
-            raise HTTPException(status_code=500, detail="Request to local resource not allowed")
+        from urllib.parse import urljoin
 
         headers = {'user-agent': opts.api_useragent} if opts.api_useragent else {}
-        response = requests.get(encoding, timeout=30, headers=headers)
+
+        url = encoding
+        response = None
+        for _ in range(10):  # Manual redirect handling to prevent SSRF and DNS rebinding bypasses
+            if opts.api_forbid_local_requests and not verify_url(url):
+                raise HTTPException(status_code=500, detail="Request to local resource not allowed")
+
+            response = requests.get(url, timeout=30, headers=headers, allow_redirects=False)
+            if response.status_code in (301, 302, 303, 307, 308):
+                location = response.headers.get('location')
+                if not location:
+                    break
+                url = urljoin(url, location)
+                continue
+            break
+
+        if response is None:
+            raise HTTPException(status_code=500, detail="Invalid image url")
+
         try:
             image = images.read(BytesIO(response.content))
             return image

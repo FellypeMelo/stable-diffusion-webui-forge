@@ -247,6 +247,7 @@ options_templates.update(options_section(('optimizations', "Optimizations", "sd"
     "batch_cond_uncond": OptionInfo(True, "Batch cond/uncond").info("do both conditional and unconditional denoising in one batch; uses a bit more VRAM during sampling, but improves speed; previously this was controlled by --always-batch-cond-uncond commandline argument"),
     "fp8_storage": OptionInfo("Disable", "FP8 weight", gr.Radio, {"choices": ["Disable", "Enable for SDXL", "Enable"]}).info("Use FP8 to store Linear/Conv layers' weight. Require pytorch>=2.1.0."),
     "cache_fp16_weight": OptionInfo(False, "Cache FP16 weight for LoRA").info("Cache fp16 weight when enabling FP8, will increase the quality of LoRA. Use more system ram."),
+    "openvino_enable": OptionInfo(False, "Enable OpenVINO Acceleration (Intel GPU/CPU)").info("Use OpenVINO for faster inference on Intel Hardware. Models will be converted and cached automatically."),
 }))
 
 options_templates.update(options_section(('compatibility', "Compatibility", "sd"), {

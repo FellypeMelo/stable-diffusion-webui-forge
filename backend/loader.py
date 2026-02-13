@@ -4,6 +4,7 @@ import logging
 import importlib
 
 import backend.args
+from backend.diffusion_engine.z_image import ZImage
 import huggingface_guess
 
 from diffusers import DiffusionPipeline
@@ -25,7 +26,7 @@ from backend.diffusion_engine.flux import Flux
 from backend.diffusion_engine.chroma import Chroma
 
 
-possible_models = [StableDiffusion, StableDiffusion2, StableDiffusionXLRefiner, StableDiffusionXL, StableDiffusion3, Chroma, Flux]
+possible_models = [StableDiffusion, StableDiffusion2, StableDiffusionXLRefiner, StableDiffusionXL, StableDiffusion3, Chroma, Flux, ZImage]
 
 
 logging.getLogger("diffusers").setLevel(logging.ERROR)
@@ -446,10 +447,40 @@ def preprocess_state_dict(sd):
     return sd
 
 
+class GuessZImage:
+    huggingface_repo = 'Tongyi-MAI/Z-Image'
+    unet_target = 'transformer'
+    vae_target = 'vae'
+    unet_key_prefix = ['transformer.']
+    vae_key_prefix = ['vae.']
+
+    class ModelType:
+        name = 'Z_IMAGE'
+    def model_type(self, sd):
+        return self.ModelType()
+    ztsnr = False
+
+    def clip_target(self, sd):
+        return {'qwen': 'text_encoder'}
+
+    def process_vae_state_dict(self, sd):
+        return sd
+
+    def process_clip_state_dict(self, sd):
+        return sd
+
 def split_state_dict(sd, additional_state_dicts: list = None):
+    filename = sd if isinstance(sd, str) else ""
     sd = load_torch_file(sd)
+    is_z_image = False
+    if any(k.startswith("transformer.x_embedder") for k in sd) and any(k.startswith("text_encoder.model.embed_tokens") for k in sd):
+        is_z_image = True
     sd = preprocess_state_dict(sd)
     guess = huggingface_guess.guess(sd)
+    if is_z_image:
+        guess = GuessZImage()
+        if "Turbo" in filename or "turbo" in filename.lower():
+            guess.huggingface_repo = 'Tongyi-MAI/Z-Image-Turbo'
 
     if isinstance(additional_state_dicts, list):
         for asd in additional_state_dicts:
@@ -512,6 +543,18 @@ def forge_loader(sd, additional_state_dicts=None):
             del estimated_config.unet_config[x]
         state_dicts['text_encoder'] = state_dicts['text_encoder_2']
         del state_dicts['text_encoder_2'] 
+
+    import backend.openvino
+    ov_components = None
+    if backend.openvino.is_enabled():
+        from huggingface_guess import model_list
+        from modules import hashes
+        is_sdxl = isinstance(estimated_config, model_list.SDXL)
+        model_hash = hashes.sha256_from_cache(sd, f"checkpoint/{os.path.basename(sd)}")
+        if not model_hash:
+             model_hash = hashes.sha256(sd, f"checkpoint/{os.path.basename(sd)}")
+        ov_components = backend.openvino.get_components(sd, model_hash, is_sdxl)
+
     repo_name = estimated_config.huggingface_repo
 
     local_path = os.path.join(dir_path, 'huggingface', repo_name)
@@ -526,6 +569,10 @@ def forge_loader(sd, additional_state_dicts=None):
                 del state_dicts[component_name]
             if component is not None:
                 huggingface_components[component_name] = component
+
+    if ov_components:
+        print("[OpenVINO] Overwriting components with OpenVINO versions.")
+        huggingface_components.update(ov_components)
 
     yaml_config = None
     yaml_config_prediction_type = None

@@ -1,4 +1,5 @@
 import re
+import asyncio
 
 import gradio as gr
 from fastapi import FastAPI
@@ -55,7 +56,7 @@ def api_networks(_: gr.Blocks, app: FastAPI):
 
     @app.post("/sdapi/v1/refresh-loras")
     async def refresh_loras():
-        return networks.list_available_networks()
+        return await asyncio.get_running_loop().run_in_executor(None, networks.list_available_networks)
 
 
 script_callbacks.on_app_started(api_networks)

@@ -33,7 +33,7 @@ torchsde==0.2.6
 transformers==4.46.1
 httpx==0.24.1
 pillow-avif-plugin==1.4.3
-diffusers==0.31.0
+diffusers>=0.31.0
 gradio_rangeslider==0.0.6
 gradio_imageslider==0.0.20
 loadimg==0.1.2
@@ -41,3 +41,5 @@ tqdm==4.66.1
 peft==0.13.2
 pydantic==2.8.2
 huggingface-hub==0.26.2
+openvino
+optimum-intel

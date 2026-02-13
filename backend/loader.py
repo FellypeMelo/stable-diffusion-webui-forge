@@ -4,6 +4,7 @@ import logging
 import importlib
 
 import backend.args
+from backend.diffusion_engine.z_image import ZImage
 import huggingface_guess
 
 from diffusers import DiffusionPipeline
@@ -25,7 +26,7 @@ from backend.diffusion_engine.flux import Flux
 from backend.diffusion_engine.chroma import Chroma
 
 
-possible_models = [StableDiffusion, StableDiffusion2, StableDiffusionXLRefiner, StableDiffusionXL, StableDiffusion3, Chroma, Flux]
+possible_models = [StableDiffusion, StableDiffusion2, StableDiffusionXLRefiner, StableDiffusionXL, StableDiffusion3, Chroma, Flux, ZImage]
 
 
 logging.getLogger("diffusers").setLevel(logging.ERROR)
@@ -446,10 +447,40 @@ def preprocess_state_dict(sd):
     return sd
 
 
+class GuessZImage:
+    huggingface_repo = 'Tongyi-MAI/Z-Image'
+    unet_target = 'transformer'
+    vae_target = 'vae'
+    unet_key_prefix = ['transformer.']
+    vae_key_prefix = ['vae.']
+
+    class ModelType:
+        name = 'Z_IMAGE'
+    def model_type(self, sd):
+        return self.ModelType()
+    ztsnr = False
+
+    def clip_target(self, sd):
+        return {'qwen': 'text_encoder'}
+
+    def process_vae_state_dict(self, sd):
+        return sd
+
+    def process_clip_state_dict(self, sd):
+        return sd
+
 def split_state_dict(sd, additional_state_dicts: list = None):
+    filename = sd if isinstance(sd, str) else ""
     sd = load_torch_file(sd)
+    is_z_image = False
+    if any(k.startswith("transformer.x_embedder") for k in sd) and any(k.startswith("text_encoder.model.embed_tokens") for k in sd):
+        is_z_image = True
     sd = preprocess_state_dict(sd)
     guess = huggingface_guess.guess(sd)
+    if is_z_image:
+        guess = GuessZImage()
+        if "Turbo" in filename or "turbo" in filename.lower():
+            guess.huggingface_repo = 'Tongyi-MAI/Z-Image-Turbo'
 
     if isinstance(additional_state_dicts, list):
         for asd in additional_state_dicts:

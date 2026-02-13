@@ -512,6 +512,18 @@ def forge_loader(sd, additional_state_dicts=None):
             del estimated_config.unet_config[x]
         state_dicts['text_encoder'] = state_dicts['text_encoder_2']
         del state_dicts['text_encoder_2'] 
+
+    import backend.openvino
+    ov_components = None
+    if backend.openvino.is_enabled():
+        from huggingface_guess import model_list
+        from modules import hashes
+        is_sdxl = isinstance(estimated_config, model_list.SDXL)
+        model_hash = hashes.sha256_from_cache(sd, f"checkpoint/{os.path.basename(sd)}")
+        if not model_hash:
+             model_hash = hashes.sha256(sd, f"checkpoint/{os.path.basename(sd)}")
+        ov_components = backend.openvino.get_components(sd, model_hash, is_sdxl)
+
     repo_name = estimated_config.huggingface_repo
 
     local_path = os.path.join(dir_path, 'huggingface', repo_name)
@@ -526,6 +538,10 @@ def forge_loader(sd, additional_state_dicts=None):
                 del state_dicts[component_name]
             if component is not None:
                 huggingface_components[component_name] = component
+
+    if ov_components:
+        print("[OpenVINO] Overwriting components with OpenVINO versions.")
+        huggingface_components.update(ov_components)
 
     yaml_config = None
     yaml_config_prediction_type = None
